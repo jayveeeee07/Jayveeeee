@@ -1,50 +1,32 @@
 <?php
-// register.php
-require __DIR__ . '/db.php';
-session_start();
+include 'public/db.php';
+include 'public/header.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['error'=>'Method not allowed']);
-    exit;
-}
+$message = '';
 
-$fullname = trim($_POST['fullname'] ?? '');
-$username = trim($_POST['username'] ?? '');
-$email = trim($_POST['email'] ?? '');
-$password = $_POST['password'] ?? '';
+if($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $username = $_POST['username'];
+    $email = $_POST['email'];
+    $password = password_hash($_POST['password'], PASSWORD_BCRYPT);
 
-if (!$fullname || !$username || !$email || !$password) {
-    http_response_code(400);
-    echo json_encode(['error'=>'Missing required fields']);
-    exit;
-}
-
-// Check duplicates
-$stmt = $pdo->prepare('SELECT id FROM users WHERE username = ? OR email = ? LIMIT 1');
-$stmt->execute([$username, $email]);
-if ($stmt->fetch()) {
-    http_response_code(409);
-    echo json_encode(['error'=>'Username or email already exists']);
-    exit;
-}
-
-// Handle photo upload (optional)
-$photoPath = null;
-if (!empty($_FILES['photo']['name'])) {
-    $uploadDir = __DIR__ . '/../uploads/';
-    if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-    $ext = pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION);
-    $filename = 'user_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
-    $target = $uploadDir . $filename;
-    if (move_uploaded_file($_FILES['photo']['tmp_name'], $target)) {
-        // store path relative to public
-        $photoPath = '/public/uploads/' . $filename;
+    $stmt = $pdo->prepare("INSERT INTO users (username,email,password) VALUES (?,?,?)");
+    if($stmt->execute([$username, $email, $password])) {
+        $message = "Registration successful! <a href='login.php'>Login here</a>";
+    } else {
+        $message = "Registration failed. Try again.";
     }
 }
+?>
 
-$hash = password_hash($password, PASSWORD_DEFAULT);
-$stmt = $pdo->prepare('INSERT INTO users (fullname, username, email, password_hash, photo) VALUES (?, ?, ?, ?, ?)');
-$stmt->execute([$fullname, $username, $email, $hash, $photoPath]);
+<section class="register">
+    <h2>Register</h2>
+    <?php if($message) echo "<p>$message</p>"; ?>
+    <form method="POST">
+        <input type="text" name="username" placeholder="Username" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <input type="password" name="password" placeholder="Password" required>
+        <button type="submit">Register</button>
+    </form>
+</section>
 
-echo json_encode(['success'=>true, 'message'=>'Account created']);
+<?php include 'public/footer.php'; ?>
