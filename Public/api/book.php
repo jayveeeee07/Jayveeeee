@@ -1,39 +1,79 @@
 <?php
-require __DIR__ . '/db.php';
 session_start();
-
-if (empty($_SESSION['user_id'])) {
-    http_response_code(401); echo json_encode(['error'=>'Not authenticated']); exit;
+if(!isset($_SESSION['user_id'])){
+    header("Location: login.php");
+    exit;
 }
 
-$user_id = $_SESSION['user_id'];
-$room_id = intval($_POST['room_id'] ?? 0);
-$check_in = $_POST['check_in'] ?? null;
-$payment_method = $_POST['payment_method'] ?? '';
-$reference_number = $_POST['reference_number'] ?? null;
+include 'public/db.php';
+include 'public/header.php';
 
-$proofPath = null;
-if (!empty($_FILES['proof']['name'])) {
-    $uploadDir = __DIR__ . '/../uploads/';
-    if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-    $ext = pathinfo($_FILES['proof']['name'], PATHINFO_EXTENSION);
-    $filename = 'proof_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
-    if (move_uploaded_file($_FILES['proof']['tmp_name'], $uploadDir . $filename)) {
-        $proofPath = '/public/uploads/' . $filename;
+// Check if cart is empty
+if(empty($_SESSION['cart'])){
+    echo "<p>Your cart is empty. <a href='room.php'>Browse Rooms</a></p>";
+    include 'public/footer.php';
+    exit;
+}
+
+// Fetch rooms in cart
+$ids = implode(',', $_SESSION['cart']);
+$stmt = $pdo->query("SELECT * FROM rooms WHERE id IN ($ids)");
+$rooms_in_cart = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$errors = [];
+$success = '';
+
+if(isset($_POST['book'])){
+    $user_id = $_SESSION['user_id'];
+    $checkin = $_POST['checkin'];
+    $checkout = $_POST['checkout'];
+    $total_price = array_sum(array_column($rooms_in_cart, 'price'));
+
+    if(!$checkin || !$checkout){
+        $errors[] = "Please select check-in and check-out dates.";
+    } else {
+        // Save booking
+        $stmt = $pdo->prepare("INSERT INTO bookings (user_id, room_ids, checkin, checkout, total_price) VALUES (?, ?, ?, ?, ?)");
+        $room_ids_str = implode(',', array_column($rooms_in_cart, 'id'));
+        $stmt->execute([$user_id, $room_ids_str, $checkin, $checkout, $total_price]);
+
+        // Clear cart
+        $_SESSION['cart'] = [];
+        $success = "Booking successful! Your rooms are reserved.";
     }
 }
+?>
 
-try {
-    $ref = $reference_number ?: 'REF-' . strtoupper(bin2hex(random_bytes(4)));
-    $stmt = $pdo->prepare('INSERT INTO bookings (user_id, room_id, check_in, payment_method, proof_image, reference_number) VALUES (?,?,?,?,?,?)');
-    $stmt->execute([$user_id, $room_id, $check_in, $payment_method, $proofPath, $ref]);
+<section class="booking">
+    <h2>Booking / Reservation</h2>
 
-    // create notification
-    $bookingId = $pdo->lastInsertId();
-    $stmt2 = $pdo->prepare('INSERT INTO notifications (user_id, title, body) VALUES (?, ?, ?)');
-    $stmt2->execute([$user_id, 'Booking Submitted', 'Your booking is pending approval. Reference: ' . $ref]);
+    <?php if($errors): ?>
+        <div class="errors">
+            <?php foreach($errors as $err) echo "<p>$err</p>"; ?>
+        </div>
+    <?php endif; ?>
 
-    echo json_encode(['success'=>true,'booking_id'=>$bookingId]);
-} catch (Exception $e) {
-    http_response_code(500); echo json_encode(['error'=>$e->getMessage()]);
-}
+    <?php if($success): ?>
+        <div class="success">
+            <p><?php echo $success; ?></p>
+            <a href="home.php" class="btn">Go to Home</a>
+        </div>
+    <?php else: ?>
+        <h3>Rooms in your cart:</h3>
+        <ul>
+            <?php foreach($rooms_in_cart as $room): ?>
+                <li><?php echo htmlspecialchars($room['name'])." - $".$room['price']; ?></li>
+            <?php endforeach; ?>
+        </ul>
+        <form method="POST" action="booking.php">
+            <label>Check-in Date:</label>
+            <input type="date" name="checkin" required>
+            <label>Check-out Date:</label>
+            <input type="date" name="checkout" required>
+            <p><strong>Total Price: $<?php echo array_sum(array_column($rooms_in_cart, 'price')); ?></strong></p>
+            <button type="submit" name="book">Confirm Booking</button>
+        </form>
+    <?php endif; ?>
+</section>
+
+<?php include 'public/footer.php'; ?>
