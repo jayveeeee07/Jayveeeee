@@ -1,0 +1,10 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Home</title><link rel="stylesheet" href="/style.css"></head><body>
+<header class="header"><a class="brand" href="/home.html"><img src="/images/logo.jpg"><div><h1>JAYVEE HALL OF MANSION</h1></div></a><nav class="nav"><a href="/home.html" class="active">HOME</a><a href="/room.html">ROOM</a><a href="/cart.html">CART</a><a href="/message.html">MESSAGE</a><a href="/notification.html">NOTIFICATION</a><a href="/adminpanel.html">ADMIN</a></nav></header>
+<main class="container"><section><h2>Welcome to JHOM</h2><p class="kv">Experience comfort and luxury—see latest updates below.</p></section><div id="dynamicContent"></div></main>
+<script>
+const types=['Updates','News','Events','Promos'];
+async function load(){ const container=document.getElementById('dynamicContent'); container.innerHTML=''; for(const t of types){ const res = await fetch('/api/get_content.php?type='+encodeURIComponent(t)); const j = await res.json(); container.insertAdjacentHTML('beforeend', `<section class='content-section'><h2>${t}</h2>` + (j.items.length? j.items.map(it=>`<div class='content-item'>${it.image?`<img src='${it.image}' alt=''>`:''}<div style='flex:1'><div class='content-title'>${it.title}</div><div class='kv'>${it.date}</div><div>${it.description}</div></div></div>`).join('') : `<div class='no-content'>No ${t.toLowerCase()} available.</div>`) + `</section>`); } }
+load();
+</script>
+</body></html>
