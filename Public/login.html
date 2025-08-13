@@ -1,0 +1,25 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Login</title><link rel="stylesheet" href="/style.css"></head><body>
+<header class="header"><a class="brand" href="/index.html"><img src="/images/logo.jpg"><div><h1>JAYVEE HALL OF MANSION</h1></div></a></header>
+<main class="container">
+  <section class="card auth-card"><h2>Login</h2>
+    <form id="loginForm">
+      <input class="input" name="identifier" placeholder="Username or email" required>
+      <input class="input" name="password" type="password" placeholder="Password" required>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Login</button>
+        <a class="btn btn-outline" href="/register.html">Register</a>
+      </div>
+    </form>
+  </section>
+</main>
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const res = await fetch('/api/login.php', { method:'POST', body: fd });
+  const j = await res.json();
+  if(j.success){ localStorage.setItem('user', JSON.stringify(j.user)); location.href='/home.html'; } else alert(j.error || 'Login failed');
+});
+</script>
+</body></html>
