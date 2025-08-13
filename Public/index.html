@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>JHOM — Welcome</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="container">
+    <section class="card welcome-hero">
+      <img src="/images/logo.jpg" alt="logo" class="logo-large">
+      <h1>JAYVEE HALL OF MANSION</h1>
+      <p class="kv">Welcome to JHOM — comfortable rooms, excellent service, and exclusive promos.</p>
+      <label style="display:flex;gap:8px;align-items:center;justify-content:center;margin:12px 0;">
+        <input id="termsChk" type="checkbox"> <span>I agree to the Terms & Conditions</span>
+      </label>
+      <div style="text-align:center">
+        <a class="btn btn-primary" id="getStarted">GET STARTED</a>
+      </div>
+    </section>
+  </main>
+<script>
+document.getElementById('getStarted').addEventListener('click', ()=>{
+  if(!document.getElementById('termsChk').checked){ alert('Please accept Terms & Conditions'); return; }
+  window.location = '/login.html';
+});
+</script>
+</body>
+  </html>
