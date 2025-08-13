@@ -1,27 +1,36 @@
 <?php
-require __DIR__ . '/db.php';
 session_start();
-$method = $_SERVER['REQUEST_METHOD'];
-
-try {
-    if ($method === 'POST') {
-        $user_id = $_SESSION['user_id'] ?? null;
-        $subject = $_POST['subject'] ?? '';
-        $body = $_POST['body'] ?? '';
-        $stmt = $pdo->prepare('INSERT INTO messages (user_id, subject, body) VALUES (?, ?, ?)');
-        $stmt->execute([$user_id, $subject, $body]);
-        echo json_encode(['success'=>true]); exit;
-    }
-    if ($method === 'GET') {
-        if (!empty($_SESSION['role']) && $_SESSION['role'] === 'admin') {
-            $stmt = $pdo->query('SELECT m.*, u.fullname FROM messages m LEFT JOIN users u ON m.user_id=u.id ORDER BY created_at DESC');
-            echo json_encode(['messages'=>$stmt->fetchAll()]); exit;
-        }
-        $user_id = $_SESSION['user_id'] ?? null;
-        $stmt = $pdo->prepare('SELECT * FROM messages WHERE user_id = ? ORDER BY created_at DESC');
-        $stmt->execute([$user_id]);
-        echo json_encode(['messages'=>$stmt->fetchAll()]); exit;
-    }
-} catch (Exception $e) {
-    http_response_code(500); echo json_encode(['error'=>$e->getMessage()]);
+if(!isset($_SESSION['user_id'])){
+    header("Location: login.php");
+    exit;
 }
+
+include 'public/db.php';
+include 'public/header.php';
+
+// Fetch user messages
+$user_id = $_SESSION['user_id'];
+$stmt = $pdo->prepare("SELECT * FROM messages WHERE user_id = ? ORDER BY created_at DESC");
+$stmt->execute([$user_id]);
+$messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+?>
+
+<section class="messages">
+    <h2>Your Messages</h2>
+
+    <?php if(empty($messages)): ?>
+        <p>No messages yet.</p>
+    <?php else: ?>
+        <ul class="message-list">
+            <?php foreach($messages as $msg): ?>
+                <li>
+                    <strong><?php echo htmlspecialchars($msg['title']); ?></strong> 
+                    <span class="date"><?php echo date("d M Y H:i", strtotime($msg['created_at'])); ?></span>
+                    <p><?php echo nl2br(htmlspecialchars($msg['content'])); ?></p>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+</section>
+
+<?php include 'public/footer.php'; ?>
